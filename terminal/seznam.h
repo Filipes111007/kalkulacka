@@ -28,4 +28,5 @@ void pridej_uzel(SEZNAM *s, UZEL *u); //prida na konec
 UZEL *vytvor_uzel(char znamenko, int hodnota);
 void vypis_uzel(UZEL *u);
 void otoc_seznam(SEZNAM *s); // otočí seznam
+void zrus_uzel(SEZNAM *s, UZEL *u); // uvolní uzel
 #endif

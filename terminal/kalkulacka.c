@@ -178,27 +178,29 @@ UZEL *vypocitej_vysledek(SEZNAM *s) { //rekurzivní funkce pro výpočet výsled
             }            
             // Uložíme si hodnotu výsledku
             double hodnota_vysledku = vysledek->hodnota;
-            
-            // Uvolníme podseznam
             zrus_seznam(podseznam);
-            
-            // Přepíšeme uzel se začínající závorkou na výsledek
+
             zacatek_zavorek->znamenko = 'g';
             zacatek_zavorek->hodnota = hodnota_vysledku;
-            
-            // Odstraníme všechny uzly mezi závorkami včetně koncové závorky
-            UZEL *uzel_k_odstraneni = zacatek_zavorek->dalsi;
-            while (uzel_k_odstraneni != NULL && uzel_k_odstraneni != s->akt->dalsi) {
-                UZEL *dalsi_uzel = uzel_k_odstraneni->dalsi;
-                zrus_uzel(s, uzel_k_odstraneni);
-                uzel_k_odstraneni = dalsi_uzel;
+
+            // Bezpečné mazání
+            UZEL *konec = s->akt;
+            UZEL *next_after_konec = konec->dalsi;
+            UZEL *mazany = zacatek_zavorek->dalsi;
+            while (mazany != NULL && mazany != next_after_konec) {
+                UZEL *dalsi = mazany->dalsi;
+                zrus_uzel(s, mazany);
+                mazany = dalsi;
             }
-            
+            zacatek_zavorek->dalsi = next_after_konec;
+            if (next_after_konec) next_after_konec->predchozi = zacatek_zavorek;
+
             DEBUG_PRINT("Výsledek podvýrazu: %g\n", zacatek_zavorek->hodnota);
-            
+
             // Resetujeme a začneme znovu od začátku
             s->akt = s->zacatek;
             zavorek = 0;
+            continue;
             }
         }
         
@@ -297,7 +299,7 @@ int main(){
                     return 1; // vrátíme chybu
                 }
                 je_desetinne = 1; // nastavíme, že jsme narazili na desetinnou čárku
-                cislo = cislo/pocetCisel; // pokud je tečka, posuneme desetinnou čárku
+                cislo /= pocetCisel; // pokud je tečka, posuneme desetinnou čárku
                 pocetCisel = 1;
             } else{
                 cislo += pocetCisel * (priklad[i-1] - '0');

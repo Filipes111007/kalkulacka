@@ -4,7 +4,7 @@
 
 typedef struct _uzel { // PRVEK, UZEL, ITEM
     char znamenko; // hodnotová položka
-    int hodnota; // hodnotová položka
+    double hodnota; // hodnotová položka
     struct _uzel *dalsi; // odkaz na další uzel
     struct _uzel *predchozi; // odkaz na předchozí uzel (pro případ, že by bylo potřeba)
 } UZEL;
@@ -25,8 +25,9 @@ void pridej_uzel(SEZNAM *s, UZEL *u); //prida na konec
 // SEZNAM *serad_seznam(SEZNAM *s); // seradi seznam
 // UZEL *vyjmi_uzel(SEZNAM *s);
 // UZEL *vyhledej(SEZNAM *s, char *nazev);
-UZEL *vytvor_uzel(char znamenko, int hodnota);
+UZEL *vytvor_uzel(char znamenko, double hodnota);
 void vypis_uzel(UZEL *u);
 void otoc_seznam(SEZNAM *s); // otočí seznam
 void zrus_uzel(SEZNAM *s, UZEL *u); // uvolní uzel
+UZEL *vypocitej_vysledek(SEZNAM *s); // vypočítá výsledek výrazu
 #endif

@@ -34,7 +34,7 @@ clean:
 
 # Debug verze s více informacemi
 debug: CFLAGS += -DDEBUG -O0
-debug: $(TARGET)
+debug: clean $(TARGET)
 
 # Verze pro release (optimalizovaná)
 release: CFLAGS += -O2 -DNDEBUG

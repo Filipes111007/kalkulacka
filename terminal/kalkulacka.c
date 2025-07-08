@@ -67,7 +67,7 @@ void pridej_uzel(SEZNAM *s, UZEL *u){ //prida uzel na konec
     }
 }
 
-UZEL *vytvor_uzel(char znamenko, int hodnota) { // vytvori uzel
+UZEL *vytvor_uzel(char znamenko, double hodnota) { // vytvori uzel
     UZEL *u;
     u = (UZEL *) malloc(sizeof(UZEL)); // alokace paměti
     if (u != NULL) {
@@ -75,7 +75,7 @@ UZEL *vytvor_uzel(char znamenko, int hodnota) { // vytvori uzel
         u->hodnota = hodnota; // mohou být jiné, dle deklarace
         u->dalsi = NULL;
         u->predchozi = NULL;
-        DEBUG_PRINT("Vytvořen uzel: znamenko='%c', hodnota=%d\n", znamenko, hodnota);
+        DEBUG_PRINT("Vytvořen uzel: znamenko='%c', hodnota=%g\n", znamenko, hodnota);
     } else {
         DEBUG_PRINT("CHYBA: Nepodařilo se alokovat paměť pro uzel!\n");
     }
@@ -85,7 +85,7 @@ UZEL *vytvor_uzel(char znamenko, int hodnota) { // vytvori uzel
 void vypis_uzel(UZEL *u){
     if(u != NULL){
         if (u->znamenko == 'g'){
-            printf("%d", u->hodnota);
+            printf("%g", u->hodnota);
         }
         else {
             printf("%c", u->znamenko);
@@ -135,6 +135,130 @@ void zrus_uzel(SEZNAM *s, UZEL *u) { // uvolní uzel
     s->delka--; // snížení délky seznamu
 }
 
+UZEL *vypocitej_vysledek(SEZNAM *s) { //rekurzivní funkce pro výpočet výsledku
+    int zavorek = 0; // proměnná pro sledování závorek
+    s->akt = s->zacatek; // nastavíme ukazatel na začátek seznamu
+    if (s->delka == 1) {
+        return s->zacatek; // pokud je v seznamu jen jeden uzel, vrátíme jeho hodnotu
+    }
+    while (s->akt != NULL) {
+        if (s->akt->znamenko == '('){
+            zavorek++; // zvýšíme počet závorek
+        } else if (s->akt->znamenko == ')') {
+            zavorek--; // snížíme počet závorek
+            if (zavorek < 0) { // pokud je počet závorek záporný, je chyba v závorkách
+                fprintf(stderr, "Chyba: Neplatné závorky v příkladu.\n");
+                return NULL; // vrátíme NULL pro chybu
+            }
+            if(zavorek == 0){
+            SEZNAM *podseznam = init_seznam(); // vytvoříme nový seznam pro podvýraz
+            UZEL *poduzel = s->zacatek; // začneme od začátku seznamu
+            while (poduzel->znamenko != '(' && poduzel != s->akt) { // dokud nenarazíme na začínající závorku
+                poduzel = poduzel->dalsi; // posuneme se na další uzel
+            }
+            UZEL *zacatek_zavorek = poduzel; // uložíme si začátek závorek
+            poduzel = poduzel->dalsi; // posuneme se na další uzel, který by měl být uvnitř závorek
+            while(poduzel != s->akt){
+                UZEL *novy_uzel = vytvor_uzel(poduzel->znamenko, poduzel->hodnota); // vytvoříme nový uzel
+                if (novy_uzel != NULL) {
+                    pridej_uzel(podseznam, novy_uzel); // přidáme uzel do podseznamu
+                } else {
+                    fprintf(stderr, "Chyba při vytváření uzlu.\n");
+                    zrus_seznam(podseznam);
+                    return NULL;
+                }
+                poduzel = poduzel->dalsi; // posuneme se na další uzel
+            }
+            DEBUG_PRINT("Zpracovávám podseznam uvnitř závorek:\n");
+            UZEL *vysledek = vypocitej_vysledek(podseznam); // rekurzivně zpracujeme podseznam
+            if (vysledek == NULL) {
+                fprintf(stderr, "Chyba při výpočtu podvýrazu.\n");
+                zrus_seznam(podseznam);
+                return NULL;
+            }            
+            // Uložíme si hodnotu výsledku
+            double hodnota_vysledku = vysledek->hodnota;
+            
+            // Uvolníme podseznam
+            zrus_seznam(podseznam);
+            
+            // Přepíšeme uzel se začínající závorkou na výsledek
+            zacatek_zavorek->znamenko = 'g';
+            zacatek_zavorek->hodnota = hodnota_vysledku;
+            
+            // Odstraníme všechny uzly mezi závorkami včetně koncové závorky
+            UZEL *uzel_k_odstraneni = zacatek_zavorek->dalsi;
+            while (uzel_k_odstraneni != NULL && uzel_k_odstraneni != s->akt->dalsi) {
+                UZEL *dalsi_uzel = uzel_k_odstraneni->dalsi;
+                zrus_uzel(s, uzel_k_odstraneni);
+                uzel_k_odstraneni = dalsi_uzel;
+            }
+            
+            DEBUG_PRINT("Výsledek podvýrazu: %g\n", zacatek_zavorek->hodnota);
+            
+            // Resetujeme a začneme znovu od začátku
+            s->akt = s->zacatek;
+            zavorek = 0;
+            }
+        }
+        
+        s->akt = s->akt->dalsi; // posuneme se na další uzel
+    }
+    s->akt = s->zacatek; // nastavíme ukazatel na začátek seznamu
+    while (s->akt != NULL) {
+        if (s->akt->znamenko == '*'){
+            s->akt->hodnota = s->akt->predchozi->hodnota * s->akt->dalsi->hodnota;
+            s->akt->znamenko = 'g'; // změníme znamenko na 'g' pro číslo
+            // odstraníme uzel předchozí a následující
+            DEBUG_PRINT("Vypočítáno: %g * %g = %g\n", 
+                            s->akt->predchozi->hodnota, 
+                            s->akt->dalsi->hodnota, 
+                            s->akt->hodnota);
+            zrus_uzel(s, s->akt->predchozi);
+            zrus_uzel(s, s->akt->dalsi);
+                
+        }
+        if (s->akt->znamenko == '/'){
+            s->akt->hodnota = s->akt->predchozi->hodnota / s->akt->dalsi->hodnota;
+            s->akt->znamenko = 'g'; // změníme znamenko na 'g' pro číslo
+            // odstraníme uzel předchozí a následující
+            DEBUG_PRINT("Vypočítáno: %g / %g = %g\n", 
+                            s->akt->predchozi->hodnota, 
+                            s->akt->dalsi->hodnota, 
+                            s->akt->hodnota);
+            zrus_uzel(s, s->akt->predchozi);
+            zrus_uzel(s, s->akt->dalsi);
+        }
+        s->akt = s->akt->dalsi; // posuneme se na další uzel
+    }
+    s->akt = s->zacatek; // nastavíme ukazatel na začátek seznamu
+    while (s->akt != NULL) {
+        if (s->akt->znamenko == '+'){
+            s->akt->hodnota = s->akt->predchozi->hodnota + s->akt->dalsi->hodnota;
+            s->akt->znamenko = 'g'; // změníme znamenko na 'g' pro číslo
+            // odstraníme uzel předchozí a následující
+            DEBUG_PRINT("Vypočítáno: %g + %g = %g\n", 
+                            s->akt->predchozi->hodnota, 
+                            s->akt->dalsi->hodnota, 
+                            s->akt->hodnota);
+            zrus_uzel(s, s->akt->predchozi);
+            zrus_uzel(s, s->akt->dalsi);
+        }
+        if (s->akt->znamenko == '-'){
+            s->akt->hodnota = s->akt->predchozi->hodnota - s->akt->dalsi->hodnota;
+            s->akt->znamenko = 'g'; // změníme znamenko na 'g' pro číslo
+            // odstraníme uzel předchozí a následující
+            DEBUG_PRINT("Vypočítáno: %g - %g = %g\n", 
+                            s->akt->predchozi->hodnota, 
+                            s->akt->dalsi->hodnota, 
+                            s->akt->hodnota);
+            zrus_uzel(s, s->akt->predchozi);
+            zrus_uzel(s, s->akt->dalsi);
+        }
+        s->akt = s->akt->dalsi; // posuneme se na další uzel
+    }
+    return s->zacatek;
+}
 
 int main(){
     char priklad[BUFFER];
@@ -159,33 +283,41 @@ int main(){
     #endif
     DEBUG_PRINT("Začínám parsování výrazu: '%s'\n", priklad);
 
-    int cislo = 0;
-    int pocetCisel = 1;
+    double cislo = 0;
+    double pocetCisel = 1;
     int delka_prikladu = 0; // proměnná pro délku příkladu
 
     for(i = delka; i > 0; i--){
-        if(priklad[i-1] != ' ' && priklad[i-1] != '+' && priklad[i-1] != '-' && priklad[i-1] != '*' && priklad[i-1] != '/'){
+        if(priklad[i-1] != ' ' && priklad[i-1] != '+' && priklad[i-1] != '-' && priklad[i-1] != '*' && priklad[i-1] != '/' && priklad[i-1] != '(' && priklad[i-1] != ')'){
             cislo += pocetCisel * (priklad[i-1] - '0');
             pocetCisel *= 10;
         } else{
-            uzel = vytvor_uzel('g', cislo);
-            if (uzel != NULL) {
-                pridej_uzel(seznam, uzel);
-                delka_prikladu += 1; // zvýšení délky příkladu
-            } else {
-                fprintf(stderr, "Chyba při vytváření uzlu.\n");
-                zrus_seznam(seznam);
-                return 1;
+            // Vytvoříme uzel s číslem pouze pokud bylo skutečně načteno nějaké číslo
+            if (pocetCisel > 1) { // pocetCisel > 1 znamená, že bylo načteno alespoň jedno číslo
+                uzel = vytvor_uzel('g', cislo);
+                if (uzel != NULL) {
+                    pridej_uzel(seznam, uzel);
+                    delka_prikladu += 1;
+                } else {
+                    fprintf(stderr, "Chyba při vytváření uzlu.\n");
+                    zrus_seznam(seznam);
+                    return 1;
+                }
             }
-            uzel = vytvor_uzel(priklad[i-1], 0);
-            if (uzel != NULL) {
-                pridej_uzel(seznam, uzel);
-                delka_prikladu += 1; // zvýšení délky příkladu
-            } else {
-                fprintf(stderr, "Chyba při vytváření uzlu.\n");
-                zrus_seznam(seznam);
-                return 1;
+            
+            // Vytvoříme uzel s operátorem/závorkou pouze pokud to není mezera
+            if (priklad[i-1] != ' ') {
+                uzel = vytvor_uzel(priklad[i-1], 0);
+                if (uzel != NULL) {
+                    pridej_uzel(seznam, uzel);
+                    delka_prikladu += 1;
+                } else {
+                    fprintf(stderr, "Chyba při vytváření uzlu.\n");
+                    zrus_seznam(seznam);
+                    return 1;
+                }
             }
+            
             cislo = 0;
             pocetCisel = 1;
         }
@@ -211,84 +343,30 @@ int main(){
     printf("\n");
     #endif
     seznam->akt = seznam->zacatek; // nastavíme ukazatel na začátek seznamu
-    while (seznam->akt != NULL) {
-        if (seznam->akt->znamenko == '*'){
-            seznam->akt->hodnota = seznam->akt->predchozi->hodnota * seznam->akt->dalsi->hodnota;
-            seznam->akt->znamenko = 'g'; // změníme znamenko na 'g' pro číslo
-            // odstraníme uzel předchozí a následující
-            zrus_uzel(seznam, seznam->akt->predchozi);
-            zrus_uzel(seznam, seznam->akt->dalsi);
-            if (uzel != NULL) {
-                DEBUG_PRINT("Vypočítáno: %d * %d = %d\n", 
-                            seznam->akt->predchozi->hodnota, 
-                            seznam->akt->dalsi->hodnota, 
-                            seznam->akt->hodnota);
-            } else {
-                fprintf(stderr, "Chyba při vytváření uzlu.\n");
-                zrus_seznam(seznam);
-                return 1;
-            }
-        }
-        if (seznam->akt->znamenko == '/'){
-            seznam->akt->hodnota = seznam->akt->predchozi->hodnota / seznam->akt->dalsi->hodnota;
-            seznam->akt->znamenko = 'g'; // změníme znamenko na 'g' pro číslo
-            // odstraníme uzel předchozí a následující
-            zrus_uzel(seznam, seznam->akt->predchozi);
-            zrus_uzel(seznam, seznam->akt->dalsi);
-            if (uzel != NULL) {
-                DEBUG_PRINT("Vypočítáno: %d / %d = %d\n", 
-                            seznam->akt->predchozi->hodnota, 
-                            seznam->akt->dalsi->hodnota, 
-                            seznam->akt->hodnota);
-            } else {
-                fprintf(stderr, "Chyba při vytváření uzlu.\n");
-                zrus_seznam(seznam);
-                return 1;
-            }
+    //kontrola počtu závorek
+    int zavorky = 0;
+    while(seznam->akt != NULL) {
+        if (seznam->akt->znamenko == '(') {
+            zavorky++;
+        } else if (seznam->akt->znamenko == ')') {
+            zavorky--;
         }
         seznam->akt = seznam->akt->dalsi; // posuneme se na další uzel
     }
-    seznam->akt = seznam->zacatek; // nastavíme ukazatel na začátek seznamu
-    while (seznam->akt != NULL) {
-        if (seznam->akt->znamenko == '+'){
-            seznam->akt->hodnota = seznam->akt->predchozi->hodnota + seznam->akt->dalsi->hodnota;
-            seznam->akt->znamenko = 'g'; // změníme znamenko na 'g' pro číslo
-            // odstraníme uzel předchozí a následující
-            zrus_uzel(seznam, seznam->akt->predchozi);
-            zrus_uzel(seznam, seznam->akt->dalsi);
-            if (uzel != NULL) {
-                DEBUG_PRINT("Vypočítáno: %d + %d = %d\n", 
-                            seznam->akt->predchozi->hodnota, 
-                            seznam->akt->dalsi->hodnota, 
-                            seznam->akt->hodnota);
-            } else {
-                fprintf(stderr, "Chyba při vytváření uzlu.\n");
-                zrus_seznam(seznam);
-                return 1;
-            }
-        }
-        if (seznam->akt->znamenko == '-'){
-            seznam->akt->hodnota = seznam->akt->predchozi->hodnota - seznam->akt->dalsi->hodnota;
-            seznam->akt->znamenko = 'g'; // změníme znamenko na 'g' pro číslo
-            // odstraníme uzel předchozí a následující
-            zrus_uzel(seznam, seznam->akt->predchozi);
-            zrus_uzel(seznam, seznam->akt->dalsi);
-            if (uzel != NULL) {
-                DEBUG_PRINT("Vypočítáno: %d - %d = %d\n", 
-                            seznam->akt->predchozi->hodnota, 
-                            seznam->akt->dalsi->hodnota, 
-                            seznam->akt->hodnota);
-            } else {
-                fprintf(stderr, "Chyba při vytváření uzlu.\n");
-                zrus_seznam(seznam);
-                return 1;
-            }
-        }
-        seznam->akt = seznam->akt->dalsi; // posuneme se na další uzel
+    if (zavorky != 0) {
+        fprintf(stderr, "Chyba: Neplatný počet závorek v příkladu.\n");
+        zrus_seznam(seznam);
+        return 1; // vrátíme chybu
     }
-    seznam->akt = seznam->zacatek; // nastavíme ukazatel na začátek seznamu
+    seznam->zacatek = vypocitej_vysledek(seznam); // vypočítáme výsledek
+    if (seznam->zacatek == NULL) {
+        fprintf(stderr, "Chyba při výpočtu výsledku.\n");
+        zrus_seznam(seznam);
+        return 1;
+    }
+
     printf("Výsledek: ");
-    printf("%d", seznam->akt->hodnota); // vypíšeme výsledek
+    printf("%g", seznam->zacatek->hodnota); // vypíšeme výsledek
     printf("\n");
     zrus_seznam(seznam); // uvolnění paměti
     DEBUG_PRINT("Seznam byl úspěšně uvolněn.\n");

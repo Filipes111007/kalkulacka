@@ -285,13 +285,26 @@ int main(){
 
     double cislo = 0;
     double pocetCisel = 1;
+    int je_desetinne = 0; // proměnná pro kontrolu desetinné čárky
     int delka_prikladu = 0; // proměnná pro délku příkladu
 
     for(i = delka; i > 0; i--){
         if(priklad[i-1] != ' ' && priklad[i-1] != '+' && priklad[i-1] != '-' && priklad[i-1] != '*' && priklad[i-1] != '/' && priklad[i-1] != '(' && priklad[i-1] != ')'){
-            cislo += pocetCisel * (priklad[i-1] - '0');
-            pocetCisel *= 10;
+            if(priklad[i-1] == '.' || priklad[i-1] == ','){
+                if (je_desetinne) {
+                    fprintf(stderr, "Chyba: Více než jedna desetinná čárka v čísle.\n");
+                    zrus_seznam(seznam);
+                    return 1; // vrátíme chybu
+                }
+                je_desetinne = 1; // nastavíme, že jsme narazili na desetinnou čárku
+                cislo = cislo/pocetCisel; // pokud je tečka, posuneme desetinnou čárku
+                pocetCisel = 1;
+            } else{
+                cislo += pocetCisel * (priklad[i-1] - '0');
+                pocetCisel *= 10;
+            }
         } else{
+            je_desetinne = 0; // resetujeme desetinnou čárku pro další číslo
             // Vytvoříme uzel s číslem pouze pokud bylo skutečně načteno nějaké číslo
             if (pocetCisel > 1) { // pocetCisel > 1 znamená, že bylo načteno alespoň jedno číslo
                 uzel = vytvor_uzel('g', cislo);

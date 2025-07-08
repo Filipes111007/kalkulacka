@@ -19,14 +19,14 @@ run: $(TARGET)
 
 # Test s konkrétním příkladem
 test: $(TARGET)
-	@echo "Test 1: 56+89"
+	@echo "Test 1: 56+89=145"
 	@printf "56+89\n" | ./$(TARGET)
 	@echo ""
-	@echo "Test 2: 123*45"
-	@printf "123*45\n" | ./$(TARGET)
+	@echo "Test 2: 5*(5+5)=30"
+	@printf "5*(5+5)\n" | ./$(TARGET)
 	@echo ""
-	@echo "Test 3: 10-5+3"
-	@printf "10-5+3\n" | ./$(TARGET)
+	@echo "Test 3: 5.5*(0.2*3)/7+5-9*(5+(5+(5+(8*(7/3)+5.5))))=-347.028571429"
+	@printf "5.5*(0.2*3)/7+5-9*(5+(5+(5+(8*(7/3)+5.5))))\n" | ./$(TARGET)
 
 # Čištění - smaže spustitelný soubor
 clean:
